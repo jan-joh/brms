@@ -743,8 +743,6 @@ data_ac <- function(bframe, data, data2, ...) {
       time <- get_ac_vars(bframe, "time", dim = "time")
       time_data <- get(time, data)
       out$delta_t <- as.array(rep(1E-12, N))
-      print(time)
-      print(time_data)
       for (n in 2:N) {
         if (tgroup[n] == tgroup[n - 1]){
           out$delta_t[n] <- time_data[n] - time_data[n - 1]
