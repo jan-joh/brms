@@ -71,11 +71,11 @@ NULL
 #' }
 #'
 #' @export
-arma <- function(time = NA, gr = NA, p = 1, q = 1, cov = FALSE) {
+arma <- function(time = NA, gr = NA, p = 1, q = 1, cont = FALSE, cov = FALSE) {
   label <- deparse0(match.call())
   time <- deparse0(substitute(time))
   gr <- deparse0(substitute(gr))
-  .arma(time = time, gr = gr, p = p, q = q, cov = cov, label = label)
+  .arma(time = time, gr = gr, p = p, q = q, cov = cov, cont = cont, label = label)
 }
 
 #' Set up AR(p) correlation structures
@@ -101,11 +101,11 @@ arma <- function(time = NA, gr = NA, p = 1, q = 1, cov = FALSE) {
 #' }
 #'
 #' @export
-ar <- function(time = NA, gr = NA, p = 1, cov = FALSE) {
+ar <- function(time = NA, gr = NA, p = 1, cont = FALSE, cov = FALSE) {
   label <- deparse0(match.call())
   time <- deparse0(substitute(time))
   gr <- deparse0(substitute(gr))
-  .arma(time = time, gr = gr, p = p, q = 0, cov = cov, label = label)
+  .arma(time = time, gr = gr, p = p, q = 0, cont = cont, cov = cov, label = label)
 }
 
 #' Set up MA(q) correlation structures
@@ -135,16 +135,17 @@ ma <- function(time = NA, gr = NA, q = 1, cov = FALSE) {
   label <- deparse0(match.call())
   time <- deparse0(substitute(time))
   gr <- deparse0(substitute(gr))
-  .arma(time = time, gr = gr, p = 0, q = q, cov = cov, label = label)
+  .arma(time = time, gr = gr, p = 0, q = q, cont = FALSE, cov = cov, label = label)
 }
 
 # helper function to validate input to arma()
-.arma <- function(time, gr, p, q, cov, label) {
+.arma <- function(time, gr, p, q, cont, cov, label) {
   time <- as_one_variable(time)
   gr <- as_one_character(gr)
   stopif_illegal_group(gr)
   p <- as_one_numeric(p)
   q <- as_one_numeric(q)
+  cont <- as_one_logical(cont)
   if (!(p >= 0 && is_wholenumber(p))) {
     stop2("Autoregressive order must be a non-negative integer.")
   }
@@ -154,13 +155,17 @@ ma <- function(time = NA, gr = NA, q = 1, cov = FALSE) {
   if (!sum(p, q)) {
     stop2("At least one of 'p' and 'q' should be greater zero.")
   }
+  if (cont && (p > 1 || q != 0)){
+    stop2("Continuous-time autoregressive residuals are only ",
+          "implemented for p = 1 and q = 0.")
+  }
   cov <- as_one_logical(cov)
   if (cov && (p > 1 || q > 1)) {
     stop2("Covariance formulation of ARMA structures is ",
           "only possible for effects of maximal order one.")
   }
   label <- as_one_character(label)
-  out <- nlist(time, gr, p, q, cov, label)
+  out <- nlist(time, gr, p, q, cov, cont, label)
   class(out) <- c("arma_term", "ac_term")
   out
 }
@@ -488,9 +493,10 @@ frame_ac.btl <- function(x, data = NULL, ...) {
   px <- check_prefix(x)
   out <- data.frame(term = all_terms(form), stringsAsFactors = FALSE)
   nterms <- NROW(out)
-  cnames <- c("class", "dim", "type", "time", "gr", "p", "q", "M")
+  cnames <- c("class", "dim", "type", "time", "gr", "p", "q", "M", "cont")
   out[cnames] <- list(NA)
   out$cov <- out$nat_cov <- FALSE
+  out$cont <- FALSE
   out$nat_res <- has_natural_residuals(x)
   out[names(px)] <- px
   for (i in seq_len(nterms)) {
@@ -503,6 +509,7 @@ frame_ac.btl <- function(x, data = NULL, ...) {
       out$p[i] <- ac$p
       out$q[i] <- ac$q
       out$cov[i] <- ac$cov
+  out$cont[i] <- ac$cont
     }
     if (is.cosy_term(ac)) {
       out$class[i] <- "cosy"
@@ -620,6 +627,11 @@ has_ac_subset <- function(x, ...) {
 # is a certain autocorrelation class present?
 has_ac_class <- function(x, class) {
   has_ac_subset(x, class = class)
+}
+
+# use continous-time autoregressive residuals?
+use_ac_cont <- function(x) {
+  has_ac_subset(x, cont = TRUE)
 }
 
 # use explicit residual covariance structure?
