@@ -1390,6 +1390,12 @@ stan_ac <- function(bframe, prior, threads, normalize, ...) {
         "  // number of lags per observation\n",
         "  array[N{resp}] int<lower=0> J_lag{p};\n"
       )
+      str_add(out$data) <- str_if(use_ac_cont(acframe_arma),
+        glue(
+          "  // time differences between observations\n",
+          "  vector<lower=1e-12>[N{resp}] delta_t{p};\n"
+        )
+      )
       str_add(out$model_def) <- glue(
         "  // matrix storing lagged residuals\n",
         "  matrix[N{resp}, max_lag{p}] Err{p}",
@@ -1414,8 +1420,14 @@ stan_ac <- function(bframe, prior, threads, normalize, ...) {
         )
         comp_err <- ""
       }
+      # Use continuous-time or discrete autoregressive residuals
+      ar_part <- str_if(!acframe_arma$cont,
+        glue("ar{p}"),
+        glue("pow(ar{p}, delta_t[n])")
+      )
+      
       add_ar <- str_if(acframe_arma$p > 0,
-        glue("    mu{p}[n] += Err{p}[n, 1:Kar{p}] * ar{p};\n")
+        glue("    mu{p}[n] += Err{p}[n, 1:Kar{p}] * {ar_part};\n")
       )
       add_ma <- str_if(acframe_arma$q > 0,
         glue("    mu{p}[n] += Err{p}[n, 1:Kma{p}] * ma{p};\n")
