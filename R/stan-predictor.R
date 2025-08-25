@@ -1423,7 +1423,7 @@ stan_ac <- function(bframe, prior, threads, normalize, ...) {
       # Use continuous-time or discrete autoregressive residuals
       ar_part <- str_if(!acframe_arma$cont,
         glue("ar{p}"),
-        glue("pow(ar{p}, delta_t[n])")
+        glue("pow(ar{p}, delta_t{p}[n])")
       )
       
       add_ar <- str_if(acframe_arma$p > 0,
