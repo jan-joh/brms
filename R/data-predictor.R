@@ -738,6 +738,19 @@ data_ac <- function(bframe, data, data2, ...) {
         out$J_lag[n] <- sum(tgroup[ind] %in% tgroup[n + 1])
       }
     }
+    if (use_ac_cont(acframe_arma)) {
+      # calculate time differences between observations (within groups)
+      time <- get_ac_vars(bframe, "time", dim = "time")
+      time_data <- get(time, data)
+      out$delta_t <- as.array(rep(1E-12, N))
+      print(time)
+      print(time_data)
+      for (n in 2:N) {
+        if (tgroup[n] == tgroup[n - 1]){
+          out$delta_t[n] <- time_data[n] - time_data[n - 1]
+        }
+      }
+    }
   }
   if (use_ac_cov_time(acframe)) {
     # data for the 'covariance' versions of time-series structures
