@@ -1025,7 +1025,9 @@ prior_ac <- function(bframe, def_scale_prior, internal = FALSE, ...) {
     # no boundaries are required in the conditional formulation
     # when natural residuals automatically define the scale
     need_arma_bound <- acframe_arma$cov || has_ac_latent_residuals
-    arma_lb <- str_if(need_arma_bound, "-1")
+    # define lb = 0 if continuous and lb = -1 if discrete
+    arma_lb <- str_if(need_arma_bound, 
+                      str_if(use_ac_cont(acframe_arma), "0", "-1"))
     arma_ub <- str_if(need_arma_bound, "1")
     if (acframe_arma$p > 0) {
       prior <- prior +
